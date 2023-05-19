@@ -10,7 +10,7 @@
 - （2）网络配置
     > vi /etc/sysconfig/network-scripts/ifcfg-eth1
     ![1684392984932](image/jingsai/1684392984932.png)
-    - [x] **systemct restart network**重启网络服务
+    - [x] **systemctl restart network**重启网络服务
     - [x] **ip a**查看是否有ip
     ![1684393143920](image/jingsai/1684393143920.png)
 - （3）设置控制节点主机名为controller，设置计算节点主机名为compute
