@@ -83,7 +83,7 @@
 - （2）下载镜像
     > curl -O http://10.16.81.47:30808/1-iaas/cirros-0.3.4-x86_64-disk.img
 - （3）命名为cirros，并设置最小启动需要的硬盘为10G
-    > glance image-create --name "cirros" --disk format qcow2 --min-disk 10
+    > glance image-create --name "cirros" --disk format qcow2 --min-disk 10 --container-format bare --progress < ./cirros-0.3.4-x86_64-disk.img
     - [x] openstack image list
     ![1684397017571](image/jingsai/1684397017571.png)
 ---
