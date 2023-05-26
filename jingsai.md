@@ -217,31 +217,31 @@
     > yum install redis -y
 - （2）radis1主节点执行
     修改配置文件
-    > vi /etc/redis.conf
-    第一处修改
-    #bind 127.0.0.1          #找到bind 127.0.0.1这行并注释掉
-    第二处修改
-    protected-mode yes      #修改前
-    portected-mode no       #修改后，外部网络可以访问
-    第三处修改
-    daemonize no            #修改前
-    daemoize yes            #修改后，开启守护进程
-    第四处修改
-    #requirepass foobared   #找到该行
-    requirepass "123456"    #在下方添加设置访问密码
-    第五处修改
-    #saveof <mark>masterip</mark> <masterport>      #找到该行
-    slaveof <mark>radis 1 ip</mark> 6379
-    第六处修改
-    #masterauth <mark>master-password</mark>        #找到该行
-    masterauth "123456"                             #在下方添加访问主库密码
-    第七处修改，打开AOF持久化支持
-    appendonly yes
-    保存后重启radis服务
-    > systemctl restart redis
-- （3）radis2主节点执行和第（2）步一样的操作
-- （4）在radis1主节点查询验证
-    > redis-cli  
+    > vi /etc/redis.conf  
+    第一处修改  
+    #bind 127.0.0.1          #找到bind 127.0.0.1这行并注释掉  
+    第二处修改  
+    protected-mode yes      #修改前    
+    portected-mode no       #修改后，外部网络可以访问    
+    第三处修改    
+    daemonize no            #修改前  
+    daemoize yes            #修改后，开启守护进程  
+    第四处修改  
+    #requirepass foobared   #找到该行  
+    requirepass "123456"    #在下方添加设置访问密码   
+    第五处修改  
+    #saveof <mark>masterip</mark> <masterport>      #找到该行  
+    slaveof <mark>radis 1 ip</mark> 6379  
+    第六处修改  
+    #masterauth <mark>master-password</mark>        #找到该行  
+    masterauth "123456"                             #在下方添加访问主库密码  
+    第七处修改，打开AOF持久化支持  
+    appendonly yes  
+    保存后重启radis服务  
+    > systemctl restart redis  
+- （3）radis2主节点执行和第（2）步一样的操作  
+- （4）在radis1主节点查询验证  
+    > redis-cli    
     > 127.0.0.1:6379> auth 123456
     - [x] OK
     > 127.0.0.1:6379> info replication
