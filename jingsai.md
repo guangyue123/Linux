@@ -5,7 +5,8 @@
 1.  失去auth-url
     ![1685064268743](image/jingsai/1685064268743.png)
     >source /etc/keystone/admin-openrc.sh
-2. 
+2. scp上传本地文件到别的主机
+   > scp 本地文件路径 用户名@要传的主机ip:要放的位置
 ## ![1682243815588](image/jingsai/1682243815588.png)
 
 - （1）更改网卡名称  
@@ -76,7 +77,7 @@
 - （2）
     > source /etc/keystone/admin-openrc.sh
 - （3）创建openstack用户
-    > openstack user create --domin demo --password 000000 chinaskill
+    > openstack user create --domain demo --password 000000 chinaskill
     ![1684396183383](image/jingsai/1684396183383.png)
     - [x] openstack user list
     ![1684396166733](image/jingsai/1684396166733.png)
@@ -185,7 +186,7 @@
     > showmount -e <mark>NFS ip</mark>      #出现以下输出则服务启动成功
     - [x] Export list for <mark>NFS ip</mark>
     - [x] /mnt/test <mark>NFS ip</mark>
-    > mount -t nfs <mark>NFS ip</mark>:/mnt/test/var/lib/glance/images  
+    > mount -t nfs <mark>NFS ip</mark>:/mnt/test/var /lib/glance/images  
     > chown -R glance:glance /var/lib/glance/images
 ---
 ## ![OpenStack参数调优](image/jingsai/1685065903577.png)
@@ -202,7 +203,7 @@
     添加以下内容  
     fs.file-max=10240
 
-    > vi/usr/lib/systemd/system/rabbitmq-server.service
+    > vi /usr/lib/systemd/system/rabbitmq-server.service
 
     添加以下内容  
     TimeoutStartSec=36000       #在本行后添加
@@ -218,6 +219,7 @@
 - （2）radis1主节点执行
     修改配置文件
     > vi /etc/redis.conf  
+    ```
     第一处修改  
     #bind 127.0.0.1          #找到bind 127.0.0.1这行并注释掉  
     第二处修改  
@@ -230,13 +232,14 @@
     #requirepass foobared   #找到该行  
     requirepass "123456"    #在下方添加设置访问密码   
     第五处修改  
-    #saveof <mark>masterip</mark> <masterport>      #找到该行  
+    #slaveof <mark>masterip</mark> <masterport>      #找到该行  
     slaveof <mark>radis 1 ip</mark> 6379  
     第六处修改  
     #masterauth <mark>master-password</mark>        #找到该行  
     masterauth "123456"                             #在下方添加访问主库密码  
     第七处修改，打开AOF持久化支持  
-    appendonly yes  
+    appendonly yes
+    ```1  
     保存后重启radis服务  
     > systemctl restart redis  
 - （3）radis2主节点执行和第（2）步一样的操作  
@@ -252,10 +255,369 @@
     - [x] OK
     > 127.0.0.1:6379> info replication
     - [x] ![1685067693159](image/jingsai/1685067693159.png)
+---
+
+# 容器云
+
+- （1）创建俩个100G的虚拟机
+
+- （2）改主机名，改host映射
+
+- （3）关防火墙
+    ```
+    vi /etc/selinux/config    #改成enabled  
+    setenforce 0  
+    systemctl stop firewalld.service  
+    systemctl disable firewalld.service  
+    iptables -F  
+    iptables -X  
+    iptables -Z  
+    /usr/sbin/ipatales-save
+    ```
+
+- （4）上传chinaskills_cloud_paas.iso文件到虚拟机（master节点做）
+
+- （5）挂载（master节点做）
+    > mount -o loop chinaskills_cloud_paas.iso /mnt
+
+- （6）将/mnt/目录下所有文件复制到/opt/目录下（master节点做）
+    > cp -rvf /mnt/* /opt/
+
+- (7)解除挂载/mnt/目录（master节点做）
+    > umount /mnt/
+
+- （8）移除原yum源文件（master节点做）
+    > mv /etc/yum.repos.d/* /media/
+
+- （9）编写yum源文件（master节点做）
+    > vi /etc/yum.repos.d/local.repo (内容如下)
+
+    ```
+    [K8S]
+    name=k8s
+    baseurl=file:///opt/kubernetes-repo  
+    gpgcheck=0
+    enabled=1
+    [centos]
+    name=centos
+    baseurl=http://10.16.81.47:30808/1-iaas/centos/
+    gpgcheck=0
+    enabled=1
+    ```
+    - [x] yum repolist
+
+- （10）下载vsftpd（master节点做）
+    > yum isntall -y vsftpd
+
+- （11）更改vsftpd.conf文件(最下面加入)（master节点做）
+    > anon_root=/opt
+
+- （12）重启并设置开机自启vsftpd服务（master节点做）
+    > systemctl restart vsftpd && systemctl enable vsftpd
+
+- （13）node节点编写yum源文件
+    > mv /etc/yum.repos.d/* /media/
+    > vi /etc/yum.repos.d/local.repo (内容如下)
     
+    ```
+    [K8S]
+    name=k8s
+    baseurl=ftp://master/kubernetes-repo  
+    gpgcheck=0
+    enabled=1
+    [centos]
+    name=centos
+    baseurl=http://10.16.81.47:30808/1-iaas/centos/
+    gpgcheck=0
+    enabled=1
+    ```
+- （14）运行k8s_harbor_install.sh脚本（master节点做）
+    > sh k8s_harbor_install.sh
+
+- （15）运行k8s_image_push.sh脚本（master节点做）
+    > sh k8s_image_push.sh
+
+- （16）运行k8s_master_install.sh脚本（master节点做）
+    > sh k8s_master_install.sh
+
+- （17）将GPMall.tar.gz压缩包上传到master节点
+
+- （18）解压GPMall.tar.gz压缩包
+    > tar -zxvf GPMall.tar.gz
+
+- （19）编写一个yum源文件
+    > vi local.repo
+    ```
+    [gpmall]
+    name=gpmall
+    baseurl=file:///opt/gpmall
+    gpgcheck=0
+    enabled=1
+    ```
+
+- （20）编写一个redis的Dockerfile-redis文件
+    > vi Dockerfile-redis
+    ```
+    FROM centos:centos7.5.1804
+    MAINTAINER Guo
+    ADD gpmall.tar /opt
+    RUN rm -rf /etc/yum.repos.d/*
+    ADD local.repo /etc/yum.repos.d/
+    RUN yum install redis -y
+    EXPOSE 6379
+    RUN yum clean all
+    RUN sed -i -e 's#bind 127.0.0.1@bind 0.0.0.0@g' /etc/redis.conf
+    RUN sed -i -e 's@protected-mode yes@protected-mode no@g' /etc/redis.conf
+    ENTRYPOINT ["/usr/bin/redis-server","/etc/redis.conf"]
+    CMD []
+    ```
+- （21）创建镜像gpmall-redis
+    > docker build -t gpmall-redis:v1.0 -f Dockerfile-redis .
+
+- （22）编写一个mysql初始化脚本
+    > vi mysql_init.sh
+    ```
+    #!/bin/bash
+    mysql_install_db --user=mysql
+    sleep 3s
+    mysqladmin -u root password '123456'
+    sleep 3s
+    mysql -uroot -p123456 -e "GRANT ALL FRIVILEGES ON *.* IDENTIFIED BY '123456'"
+    sleep 3s
+    mysql -uroot -p123456 -e "GREATE DATABASE gpmall;usegpmall;source /opt/gpmall.sql"
+    sleep 3s
+    ```
+- （23）编写一个数据库的Dockerfile-mariadb文件
+    > vi Dockfile-mariadb
+    ```
+    FROM centos:centos7.5.1804
+    MAINTAINER Chinaskill
+
+    #配置yum源
+    ADD gpmall.tar /opt
+    RUN rm -rf /etc/yum.repos.d/*
+    ADD local.repo /etc/yum.repos.d/
+
+    #安装MariaDB
+    RUN yum install -y MariaDB-server expect net-tools
+    RUN yum clean all
+    COPY gpmall.sql /opt/
+    ADD mysql_init.sh /opt/
+    RUN chmod +x /opt/mysql_init.sh
+    RUN /opt/mysql_init.sh
+    ENV LC_ALL en_US.UTF-8
+    EXPOSE 3306
+    CMD ["mysqld_safe"]
+    ```
+- （24）创建镜像gpmall-mariadb
+    > docker build -t gpmall-mariadb:v1.0 -f Dockerfile-mariadb .
+
+- （25）编写Dockerfile-zookeeper文件
+    > vi Dockerifle-zookeeper
+    ```
+    FROM centos:centos7.5.1804
+    MAINTAINER Chinaskill
+
+    #配置yum源
+    ADD gpmall.tar /opt
+    RUN rm -rfv /etc/yum.repos.d/*
+    ADD local.repo /etc/yum.repos.d/
+
+    #安装JDK
+    RUN yum install java-1.8.0-openjdk java-1.8.0-openjdk-devel
+
+    ENV work_opth /usr/local
+
+    WORKDIR $work-path
+
+    #安装ZooKeeper
+    ADD zookeeper-3.4.14.tar.gz /usr/local
+    ENV PATH $PTAH:JAVA_HOME/bin:$JRE_HOME/bin:$ZOOKEEPER_HOME/bin
+    RUN cp $ZOOKEEPER-HOME/conf/zoo_sample.cfg $ZOOKEEPER_HOME/conf/zoo.cfg
+
+    EXPOSE 2181
+
+    #设置开机自启
+    CMD $ZOOKEEPER_HOME/bin/zkServer.sh start-foreground
+    ```
+- （26）创建镜像
+    > docker build -t gpmall-zookeeper:v1.0 -f Dockerfile-zookeeper .
+
+- （27）编写Dockfile-kafka
+    > vi Dockfile-kafka
+    ```
+    FROM centos:centos7.5.1804
+    MAINTAINER Chinaskill
+
+    #配置yum源
+    ADD gpmall.tar /opt
+    RUN rm -rfv /etc/yum.repos.d/*
+    ADD local.repo /etc/yum.repos.d/
+
+    #安装JDK
+    RUN yum install java-1.8.0-openjdk java-1.8.0-openjdk-devel
+
+    #安装Kafka
+    RUN mkdir /opt/kafka
+    ADD kafka_2.11-1.1.1.tgz /opt/kafka
+    RUN sed -i 's/num.partitions.*$/num.partitions=3/g' /opt/kafka/kafka_2.11-1.1.1/config/server.properties
+
+    RUN echo "source /root/.bash_profile" > /opt/lafla/start.sh &&\
+        echo "cd /opt/kafka/kafka_2.11-1.1.1" >> /opt/kafka/start.sh &&\
+        echo "sed -i 's%zookeeper.connect=.*$%zookeeper.connect=zookeeper.mall:2181%g' /opt/kafka/kafka_2.11-1.1.1/config/server.properties" >> /opt/kafka/start.sh &&\
+        echo "bin/kafka-server-start.sh config/server.properties" >> /opt/kafka/start.sh &&\
+        chmod a+x /opt/kafka/start.sh
+
+    EXPOSE 9092
+
+    ENTRYPOINT ["sh","/opt/kafka/start.sh"]
+    ```
+- （28）创建镜像
+    > docker build -t gpmall-kafka:v1.0 -f Dockerfile-kafka .
+
+- （29）编写default.conf文件
+    > vi default.conf
+    ```
+    server {
+        listen      80;
+        server_name localhost;
+
+        #charset koi8-r;
+        #access_log /var/log/nginx/host.access.log  main;
+
+        location    /   {
+            root    /usr/share/nginx/html;
+            index   index.html  index.htm;
+        }
+        location    /user {
+            proxy_pass http://127.0.0.1:8082;
+        }
+        location    /shopping {
+            proxy_pass http://127.0..0.1:8081;
+        }
+        location    /cashier {
+            proxy_pass http://127.0.0.1:8083;
+        }
+        #error_page 404         /404.html;
+    }
+    ```
+- （30）编写front-start脚本
+    > vi front-start
+    ```
+    #!/bin/bash
+    nohup java -jar /root/user-provider-0.0.1-SNAPSHOT.jar &
+    sleep 6
+    nohup java -jar /root/shopping-provider-0.0.1-SNAPSHOT.jar &
+    sleep 6
+    nohup java -jar /root/gpmall-shopping-0.0.1-SNAPSHOT.jar &
+    sleep 6
+    nohup java -jar /root/gpmall-user-0.0.1-SNAPSHOT.jar &
+    sleep 6
+    nginx -g "daemon off;"
+    ```
+- （31）编写Docekrfile-nginx文件
+    > vi Docekrfile-nginx
+    ```
+    FROM centos:centos7.5.1804
+    MAINTAINER Chinasskill
+
+    #配置yum源
+    ADD gpmall.tar /opt
+    RUN rm -rfv /etc/yum.repos.d/*
+    ADD local.repo /etc/yum.repos.d/
+
+    RUN yum istall -y cmake pcre pcre-devel openssl openssl-devel zlib-devel gccc gcc-c++ net-tools
+
+    #安装JDK
+    RUN yum install java-1.8.0-openjdk java-1.8.0-openjdk-devel
+
+    RUN yum install nginx -y
+    RUN rm -rf /usr/share/nginx/html/*
+    ADD dist.tar /usr/share/nginx/html/
+    COPY default.conf /etc/nginx/conf.d/
+    COPY gpmall-shopping-0.0.1-SNAPSHOT.jar /root
+    COPY gpmall-user-0.0.1-SNAPSHOT.jar /root
+    COPY shopping-provider-0.0.1-SNAPSHOT.jar /root
+    COPY user-provider-0.0.1-SNAPSHOT.jar /root
+    COPY front-start.sh /root
+    RUN chmod +x /root/front-start.sh
+
+    EXPOSE 80 443
+    CMD nginx -g "daemon off;"
+    ```
+
+- （32）创建镜像gpmall-nginx
+    > docker build -t gpmall -nginx:v1.0 -f Dockerfile-nginx .
+
+- （33）
+    > for i in 'docker images|grep gpmall|awk '{print$1}'';do docker tag $i <mark>master节点ip</mark>/library/$i;docker push <mark>master节点ip</mark>/library/$i;done
+
+- （34）创建文件gpmall.yaml
+    > vi gpmall.yaml
+    ```
+    apiVersion: v1
+    kind: Pod
+    metadata:
+        name: chinaskill-mall
+        labels:
+            app: chinaskill-mall
+    spec:
+        containers:
+        -   name: chinaskill-mariadb
+            iamge: <mark>master节点ip</mark>/library/gpmall-mariadb:v1.0
+            imagePullPolicy: IfNotPresent
+            ports:
+            -    containerPort: 3306
+            
+        -   name: chinaskill-redis
+            image: <mark>master节点ip</mark>
+            imagePullPOlicy: IfNotPresent
+            ports: 
+            - containerPort: 6379
+        
+        -   name: chinaskill-zookeeper
+            image: <mark>master节点ip</mark>/library/gpmall-zookeeper:v1.0
+            imagePullPolicy: IfNotPresent
+            ports:
+            -   containerPort: 2181
+
+        -   name: chinaskill-kafka
+            image: <mark>master节点ip</mark>/library/gpmall-kafka:v1.0
+            imagePullPolicy: IfNotPresent
+            ports:
+            -   containerPort: 9092
+
+        -   name: chinaskill-nginx
+            image: <mark>master节点ip</mark>/library/gpmall-nginx:v1.0
+            imagePullPolicy: IfNotpresent
+            ports:
+            -   containerPort: 80
+            -   containerPort: 443
+            command: ["/bin/bash","/root.front-start.sh"]
+        hostAliases:
+        -   ip: "127.0.0.1"
+            hostnames:
+            - "mysql.mall"
+            - "redis.mall"
+            - "zookeeper.mall"
+            - "kafka.mall"
 
 
+    ---
 
+    apiVersion: v1
+    kind： Service
+    metadata:
+        name: chinaskill-mall
+    spec:
+        selector:
+            app: chinaskill-mall
+        ports:
+        -   port:80
+            targetPort: 80
+            nodePort: 30080
+        type: NodePort
+    ```
 
 
 
