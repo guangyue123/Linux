@@ -494,17 +494,17 @@
         #charset koi8-r;
         #access_log /var/log/nginx/host.access.log  main;
 
-        location    /   {
+        location / {
             root    /usr/share/nginx/html;
             index   index.html  index.htm;
         }
-        location    /user {
+        location /user {
             proxy_pass http://127.0.0.1:8082;
         }
-        location    /shopping {
+        location /shopping {
             proxy_pass http://127.0..0.1:8081;
         }
-        location    /cashier {
+        location /cashier {
             proxy_pass http://127.0.0.1:8083;
         }
         #error_page 404         /404.html;
@@ -535,10 +535,10 @@
     RUN rm -rfv /etc/yum.repos.d/*
     ADD local.repo /etc/yum.repos.d/
 
-    RUN yum istall -y cmake pcre pcre-devel openssl openssl-devel zlib-devel gccc gcc-c++ net-tools
+    RUN yum istall -y cmake pcre pcre-devel openssl openssl-devel zlib-devel gcc gcc-c++ net-tools
 
     #安装JDK
-    RUN yum install java-1.8.0-openjdk java-1.8.0-openjdk-devel
+    RUN yum install java-1.8.0-openjdk java-1.8.0-openjdk-devel -y
 
     RUN yum install nginx -y
     RUN rm -rf /usr/share/nginx/html/*
@@ -558,8 +558,8 @@
 - （32）创建镜像gpmall-nginx
     > docker build -t gpmall -nginx:v1.0 -f Dockerfile-nginx .
 
-- （33）
-    > for i in 'docker images|grep gpmall|awk '{print$1}'';do docker tag $i <mark>master节点ip</mark>/library/$i;docker push <mark>master节点ip</mark>/library/$i;done
+- （33）将所有镜像推送到Harbor仓库
+    > for i in \`docker images|grep gpmall|awk '{print$1":"$2}'\`;do docker tag $i <mark>master节点ip</mark>/library/$i;docker push <mark>master节点ip</mark>/library/$i;done
 
 - （34）创建文件gpmall.yaml
     > vi gpmall.yaml
@@ -627,6 +627,11 @@
             nodePort: 30080
         type: NodePort
     ```
+- （35）部署服务
+
+    - 启动服务：
+        > kubectl apply -f gpmall.yaml  
+        > kubectl get pods,service
 
 
 
