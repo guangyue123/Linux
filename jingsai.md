@@ -307,9 +307,10 @@
     - [x] yum repolist
 
 - （10）下载vsftpd（master节点做）
-    > yum isntall -y vsftpd
+    > yum install -y vsftpd
 
 - （11）更改vsftpd.conf文件(最下面加入)（master节点做）
+    >  vi /etc/vsftpd/vsftpd.conf
     > anon_root=/opt
 
 - （12）重启并设置开机自启vsftpd服务（master节点做）
@@ -332,6 +333,7 @@
     enabled=1
     ```
 - （14）运行k8s_harbor_install.sh脚本（master节点做）
+    > cd /opt/
     > sh k8s_harbor_install.sh
 
 - （15）运行k8s_image_push.sh脚本（master节点做）
@@ -344,6 +346,8 @@
 
 - （18）解压GPMall.tar.gz压缩包
     > tar -zxvf GPMall.tar.gz
+
+    > cd gpmall/
 
 - （19）编写一个yum源文件
     > vi local.repo
@@ -366,7 +370,7 @@
     RUN yum install redis -y
     EXPOSE 6379
     RUN yum clean all
-    RUN sed -i -e 's#bind 127.0.0.1@bind 0.0.0.0@g' /etc/redis.conf
+    RUN sed -i -e 's@bind 127.0.0.1@bind 0.0.0.0@g' /etc/redis.conf
     RUN sed -i -e 's@protected-mode yes@protected-mode no@g' /etc/redis.conf
     ENTRYPOINT ["/usr/bin/redis-server","/etc/redis.conf"]
     CMD []
@@ -379,12 +383,13 @@
     ```
     #!/bin/bash
     mysql_install_db --user=mysql
+    (mysqld safe &) | grep a
     sleep 3s
     mysqladmin -u root password '123456'
     sleep 3s
-    mysql -uroot -p123456 -e "GRANT ALL FRIVILEGES ON *.* IDENTIFIED BY '123456'"
+    mysql -uroot -p123456 -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY '123456'"
     sleep 3s
-    mysql -uroot -p123456 -e "GREATE DATABASE gpmall;usegpmall;source /opt/gpmall.sql"
+    mysql -uroot -p123456 -e "create database gpmall;use gpmall;source /opt/gpmall.sql;"
     sleep 3s
     ```
 - （23）编写一个数据库的Dockerfile-mariadb文件
@@ -395,7 +400,7 @@
 
     #配置yum源
     ADD gpmall.tar /opt
-    RUN rm -rf /etc/yum.repos.d/*
+    RUN rm -rfv /etc/yum.repos.d/*
     ADD local.repo /etc/yum.repos.d/
 
     #安装MariaDB
@@ -413,7 +418,7 @@
     > docker build -t gpmall-mariadb:v1.0 -f Dockerfile-mariadb .
 
 - （25）编写Dockerfile-zookeeper文件
-    > vi Dockerifle-zookeeper
+    > vi Dockerfile-zookeeper
     ```
     FROM centos:centos7.5.1804
     MAINTAINER Chinaskill
@@ -424,16 +429,20 @@
     ADD local.repo /etc/yum.repos.d/
 
     #安装JDK
-    RUN yum install java-1.8.0-openjdk java-1.8.0-openjdk-devel
+    RUN yum install java-1.8.0-openjdk java-1.8.0-openjdk-devel -y
 
-    ENV work_opth /usr/local
+    ENV work_path/usr/local
 
-    WORKDIR $work-path
+    WORKDIR $work_path
 
     #安装ZooKeeper
     ADD zookeeper-3.4.14.tar.gz /usr/local
-    ENV PATH $PTAH:JAVA_HOME/bin:$JRE_HOME/bin:$ZOOKEEPER_HOME/bin
-    RUN cp $ZOOKEEPER-HOME/conf/zoo_sample.cfg $ZOOKEEPER_HOME/conf/zoo.cfg
+    ENV ZOOKEEPER_HOME /usr/local/zookeeper-3.4.14
+
+    #PATH
+
+    ENV PATH $PATH:$JAVA_HOME/bin:$JRE_HOME/bin:$ZOOKEEPER_HOME/bin
+    RUN cp $ZOOKEEPER_HOME/conf/zoo_sample.cfg $ZOOKEEPER_HOME/conf/zoo.cfg
 
     EXPOSE 2181
 
@@ -444,7 +453,7 @@
     > docker build -t gpmall-zookeeper:v1.0 -f Dockerfile-zookeeper .
 
 - （27）编写Dockfile-kafka
-    > vi Dockfile-kafka
+    > vi Dockerfile-kafka
     ```
     FROM centos:centos7.5.1804
     MAINTAINER Chinaskill
@@ -502,7 +511,7 @@
     }
     ```
 - （30）编写front-start脚本
-    > vi front-start
+    > vi front-start.sh
     ```
     #!/bin/bash
     nohup java -jar /root/user-provider-0.0.1-SNAPSHOT.jar &
