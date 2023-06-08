@@ -310,14 +310,14 @@
     > yum install -y vsftpd
 
 - （11）更改vsftpd.conf文件(最下面加入)（master节点做）
-    >  vi /etc/vsftpd/vsftpd.conf
+    >  vi /etc/vsftpd/vsftpd.conf  
     > anon_root=/opt
 
 - （12）重启并设置开机自启vsftpd服务（master节点做）
     > systemctl restart vsftpd && systemctl enable vsftpd
 
 - （13）node节点编写yum源文件
-    > mv /etc/yum.repos.d/* /media/
+    > mv /etc/yum.repos.d/* /media/  
     > vi /etc/yum.repos.d/local.repo (内容如下)
     
     ```
@@ -333,7 +333,7 @@
     enabled=1
     ```
 - （14）运行k8s_harbor_install.sh脚本（master节点做）
-    > cd /opt/
+    > cd /opt/   
     > sh k8s_harbor_install.sh
 
 - （15）运行k8s_image_push.sh脚本（master节点做）
@@ -409,7 +409,7 @@
 
     ```
 - （23）编写一个数据库的Dockerfile-mariadb文件
-    > vi Dockfile-mariadb
+    > vi Dockerfile-mariadb
     ```
     FROM centos:centos7.5.1804
     MAINTAINER Chinaskill
@@ -547,7 +547,7 @@
 
     ```
 - （31）编写Docekrfile-nginx文件
-    > vi Dockrfile-nginx
+    > vi Dockerfile-nginx
     ```
     FROM centos:centos7.5.1804
     MAINTAINER Chinaskill
