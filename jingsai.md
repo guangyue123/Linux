@@ -272,7 +272,7 @@
     iptables -F  
     iptables -X  
     iptables -Z  
-    /usr/sbin/ipatales-save
+    /usr/sbin/iptables-save
     ```
 
 - （4）上传chinaskills_cloud_paas.iso文件到虚拟机（master节点做）
