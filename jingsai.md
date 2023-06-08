@@ -364,16 +364,31 @@
     ```
     FROM centos:centos7.5.1804
     MAINTAINER Guo
+
+    # 配置yum源
     ADD gpmall.tar /opt
-    RUN rm -rf /etc/yum.repos.d/*
+    RUN rm -rfv /etc/yum.repos.d/*
     ADD local.repo /etc/yum.repos.d/
-    RUN yum install redis -y
+
+    #安装Redis
+    RUN yum -y install redis
+
+    # 开放端口
     EXPOSE 6379
+
+    #安装清理缓存文件
     RUN yum clean all
+
+    #修改绑定IP地址
     RUN sed -i -e 's@bind 127.0.0.1@bind 0.0.0.0@g' /etc/redis.conf
+
+    #关闭保护模式
     RUN sed -i -e 's@protected-mode yes@protected-mode no@g' /etc/redis.conf
-    ENTRYPOINT ["/usr/bin/redis-server","/etc/redis.conf"]
+
+    #启动
+    ENTRYPOINT [ "/usr/bin/redis-server","/etc/redis.conf"]
     CMD []
+
     ```
 - （21）创建镜像gpmall-redis
     > docker build -t gpmall-redis:v1.0 -f Dockerfile-redis .
@@ -383,14 +398,15 @@
     ```
     #!/bin/bash
     mysql_install_db --user=mysql
-    (mysqld safe &) | grep a
+    (mysqld_safe &) | grep a
     sleep 3s
     mysqladmin -u root password '123456'
     sleep 3s
-    mysql -uroot -p123456 -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY '123456'"
+    mysql -uroot -p123456 -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY '123456'" 
     sleep 3s
     mysql -uroot -p123456 -e "create database gpmall;use gpmall;source /opt/gpmall.sql;"
     sleep 3s
+
     ```
 - （23）编写一个数据库的Dockerfile-mariadb文件
     > vi Dockfile-mariadb
@@ -398,12 +414,12 @@
     FROM centos:centos7.5.1804
     MAINTAINER Chinaskill
 
-    #配置yum源
+    # 配置yum源
     ADD gpmall.tar /opt
     RUN rm -rfv /etc/yum.repos.d/*
     ADD local.repo /etc/yum.repos.d/
 
-    #安装MariaDB
+    # 安装MariaDB
     RUN yum install -y MariaDB-server expect net-tools
     RUN yum clean all
     COPY gpmall.sql /opt/
@@ -413,6 +429,7 @@
     ENV LC_ALL en_US.UTF-8
     EXPOSE 3306
     CMD ["mysqld_safe"]
+
     ```
 - （24）创建镜像gpmall-mariadb
     > docker build -t gpmall-mariadb:v1.0 -f Dockerfile-mariadb .
@@ -423,31 +440,31 @@
     FROM centos:centos7.5.1804
     MAINTAINER Chinaskill
 
-    #配置yum源
+    # 配置yum源
     ADD gpmall.tar /opt
     RUN rm -rfv /etc/yum.repos.d/*
     ADD local.repo /etc/yum.repos.d/
 
-    #安装JDK
-    RUN yum install java-1.8.0-openjdk java-1.8.0-openjdk-devel -y
+    # 安装JDK
+    RUN yum install -y java-1.8.0-openjdk java-1.8.0-openjdk-devel
 
-    ENV work_path/usr/local
+    ENV work_path /usr/local
 
     WORKDIR $work_path
 
-    #安装ZooKeeper
+    # 安装ZooKeeper
     ADD zookeeper-3.4.14.tar.gz /usr/local
     ENV ZOOKEEPER_HOME /usr/local/zookeeper-3.4.14
 
-    #PATH
-
+    # PATH
     ENV PATH $PATH:$JAVA_HOME/bin:$JRE_HOME/bin:$ZOOKEEPER_HOME/bin
     RUN cp $ZOOKEEPER_HOME/conf/zoo_sample.cfg $ZOOKEEPER_HOME/conf/zoo.cfg
 
     EXPOSE 2181
 
-    #设置开机自启
+    # 设置开机自启
     CMD $ZOOKEEPER_HOME/bin/zkServer.sh start-foreground
+
     ```
 - （26）创建镜像
     > docker build -t gpmall-zookeeper:v1.0 -f Dockerfile-zookeeper .
@@ -458,20 +475,20 @@
     FROM centos:centos7.5.1804
     MAINTAINER Chinaskill
 
-    #配置yum源
+    # 配置yum源
     ADD gpmall.tar /opt
     RUN rm -rfv /etc/yum.repos.d/*
     ADD local.repo /etc/yum.repos.d/
 
-    #安装JDK
-    RUN yum install java-1.8.0-openjdk java-1.8.0-openjdk-devel
+    # 安装JDK
+    RUN yum install -y java-1.8.0-openjdk java-1.8.0-openjdk-devel
 
-    #安装Kafka
+    # 安装Kafka
     RUN mkdir /opt/kafka
     ADD kafka_2.11-1.1.1.tgz /opt/kafka
     RUN sed -i 's/num.partitions.*$/num.partitions=3/g' /opt/kafka/kafka_2.11-1.1.1/config/server.properties
 
-    RUN echo "source /root/.bash_profile" > /opt/lafla/start.sh &&\
+    RUN echo "source /root/.bash_profile" > /opt/kafka/start.sh &&\
         echo "cd /opt/kafka/kafka_2.11-1.1.1" >> /opt/kafka/start.sh &&\
         echo "sed -i 's%zookeeper.connect=.*$%zookeeper.connect=zookeeper.mall:2181%g' /opt/kafka/kafka_2.11-1.1.1/config/server.properties" >> /opt/kafka/start.sh &&\
         echo "bin/kafka-server-start.sh config/server.properties" >> /opt/kafka/start.sh &&\
@@ -479,7 +496,8 @@
 
     EXPOSE 9092
 
-    ENTRYPOINT ["sh","/opt/kafka/start.sh"]
+    ENTRYPOINT ["sh", "/opt/kafka/start.sh"]
+
     ```
 - （28）创建镜像
     > docker build -t gpmall-kafka:v1.0 -f Dockerfile-kafka .
@@ -488,27 +506,30 @@
     > vi default.conf
     ```
     server {
-        listen      80;
-        server_name localhost;
+        listen       80;
+        server_name  localhost;
 
         #charset koi8-r;
-        #access_log /var/log/nginx/host.access.log  main;
+        #access_log  /var/log/nginx/host.access.log  main;
 
         location / {
-            root    /usr/share/nginx/html;
-            index   index.html  index.htm;
+            root   /usr/share/nginx/html;
+            index  index.html index.htm;
         }
         location /user {
-            proxy_pass http://127.0.0.1:8082;
-        }
+                proxy_pass http://127.0.0.1:8082;
+            }
+
         location /shopping {
-            proxy_pass http://127.0..0.1:8081;
-        }
+                proxy_pass http://127.0.0.1:8081;
+            }
+
         location /cashier {
-            proxy_pass http://127.0.0.1:8083;
-        }
-        #error_page 404         /404.html;
+                proxy_pass http://127.0.0.1:8083;
+            }
+        #error_page  404              /404.html;
     }
+
     ```
 - （30）编写front-start脚本
     > vi front-start.sh
@@ -523,22 +544,22 @@
     nohup java -jar /root/gpmall-user-0.0.1-SNAPSHOT.jar &
     sleep 6
     nginx -g "daemon off;"
+
     ```
 - （31）编写Docekrfile-nginx文件
-    > vi Docekrfile-nginx
+    > vi Dockrfile-nginx
     ```
     FROM centos:centos7.5.1804
-    MAINTAINER Chinasskill
+    MAINTAINER Chinaskill
 
-    #配置yum源
+    # 配置yum源
     ADD gpmall.tar /opt
     RUN rm -rfv /etc/yum.repos.d/*
     ADD local.repo /etc/yum.repos.d/
 
-    RUN yum istall -y cmake pcre pcre-devel openssl openssl-devel zlib-devel gcc gcc-c++ net-tools
-
-    #安装JDK
-    RUN yum install java-1.8.0-openjdk java-1.8.0-openjdk-devel -y
+    RUN yum install -y cmake pcre pcre-devel openssl openssl-devel zlib-devel gcc gcc-c++ net-tools
+    # 安装JDK
+    RUN yum install -y java-1.8.0-openjdk java-1.8.0-openjdk-devel
 
     RUN yum install nginx -y
     RUN rm -rf /usr/share/nginx/html/*
@@ -556,10 +577,10 @@
     ```
 
 - （32）创建镜像gpmall-nginx
-    > docker build -t gpmall -nginx:v1.0 -f Dockerfile-nginx .
+    > docker build -t gpmall-nginx:v1.0 -f Dockerfile-nginx .
 
 - （33）将所有镜像推送到Harbor仓库
-    > for i in \`docker images|grep gpmall|awk '{print$1":"$2}'\`;do docker tag $i <mark>master节点ip</mark>/library/$i;docker push <mark>master节点ip</mark>/library/$i;done
+    > for i in \`docker images|grep gpmall|awk '{print$1":"$2}'\`;do docker tag $i 10.24.2.156/library/$i;docker push 10.24.2.156/library/$i;done
 
 - （34）创建文件gpmall.yaml
     > vi gpmall.yaml
@@ -567,65 +588,65 @@
     apiVersion: v1
     kind: Pod
     metadata:
-        name: chinaskill-mall
-        labels:
-            app: chinaskill-mall
+    name: chinaskill-mall
+    labels:
+        app: chinaskill-mall
     spec:
-        containers:
-        -   name: chinaskill-mariadb
-            iamge: <mark>master节点ip</mark>/library/gpmall-mariadb:v1.0
-            imagePullPolicy: IfNotPresent
-            ports:
-            -    containerPort: 3306
-            
-        -   name: chinaskill-redis
-            image: <mark>master节点ip</mark>
-            imagePullPOlicy: IfNotPresent
-            ports: 
-            - containerPort: 6379
-        
-        -   name: chinaskill-zookeeper
-            image: <mark>master节点ip</mark>/library/gpmall-zookeeper:v1.0
-            imagePullPolicy: IfNotPresent
-            ports:
-            -   containerPort: 2181
+    containers:
+    - name: chinaskill-mariadb
+        image: 10.24.2.156/library/gpmall-mariadb:v1.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3306
 
-        -   name: chinaskill-kafka
-            image: <mark>master节点ip</mark>/library/gpmall-kafka:v1.0
-            imagePullPolicy: IfNotPresent
-            ports:
-            -   containerPort: 9092
+    - name: chinaskill-redis
+        image: 10.24.2.156/library/gpmall-redis:v1.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 6379
 
-        -   name: chinaskill-nginx
-            image: <mark>master节点ip</mark>/library/gpmall-nginx:v1.0
-            imagePullPolicy: IfNotpresent
-            ports:
-            -   containerPort: 80
-            -   containerPort: 443
-            command: ["/bin/bash","/root.front-start.sh"]
-        hostAliases:
-        -   ip: "127.0.0.1"
-            hostnames:
-            - "mysql.mall"
-            - "redis.mall"
-            - "zookeeper.mall"
-            - "kafka.mall"
+    - name: chinaskill-zookeeper
+        image: 10.24.2.156/library/gpmall-zookeeper:v1.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 2181
 
+    - name: chinaskill-kafka
+        image: 10.24.2.156/library/gpmall-kafka:v1.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9092
+
+    - name: chinaskill-nginx
+        image: 10.24.2.156/library/gpmall-nginx:v1.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+        - containerPort: 443
+        command: ["/bin/bash","/root/front-start.sh"]
+    hostAliases:
+    - ip: "127.0.0.1"
+        hostnames:
+        - "mysql.mall"
+        - "redis.mall"
+        - "zookeeper.mall"
+        - "kafka.mall"
 
     ---
 
     apiVersion: v1
-    kind： Service
+    kind: Service
     metadata:
-        name: chinaskill-mall
+    name: chinaskill-mall
     spec:
-        selector:
-            app: chinaskill-mall
-        ports:
-        -   port:80
-            targetPort: 80
-            nodePort: 30080
-        type: NodePort
+    selector:
+        app: chinaskill-mall
+    ports:
+    - port: 80
+        targetPort: 80
+        nodePort: 30080
+    type: NodePort
+
     ```
 - （35）部署服务
 
