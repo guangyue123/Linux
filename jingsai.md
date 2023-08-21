@@ -12,7 +12,10 @@
 - （1）更改网卡名称  
     **此界面按Tab键**
  ![1684392330105](image/jingsai/1684392330105.png)
-    > net.ifnames=0  biosdevname=0
+    > net.ifnames=0  biosdevname=0  
+    
+    **忘记了可以改此文件**
+    ![Alt text](image-3.png)
 - （2）网络配置
     > vi /etc/sysconfig/network-scripts/ifcfg-eth1
     ![1684392984932](image/jingsai/1684392984932.png)
@@ -89,7 +92,7 @@
 - （2）下载镜像
     > curl -O http://10.16.81.47:30808/1-iaas/cirros-0.3.4-x86_64-disk.img
 - （3）命名为cirros，并设置最小启动需要的硬盘为10G
-    > glance image-create --name "cirros" --disk format qcow2 --min-disk 10 --container-format bare --progress < ./cirros-0.3.4-x86_64-disk.img
+    > glance image-create --name "cirros" --disk-format qcow2 --min-disk 10 --container-format bare --progress < ./cirros-0.3.4-x86_64-disk.img
     - [x] openstack image list
     ![1684397017571](image/jingsai/1684397017571.png)
 ---
@@ -184,9 +187,11 @@
         > exportfs -r
 - （3）控制节点执行
     > showmount -e <mark>NFS ip</mark>      #出现以下输出则服务启动成功
+    
     - [x] Export list for <mark>NFS ip</mark>
     - [x] /mnt/test <mark>NFS ip</mark>
-    > mount -t nfs <mark>NFS ip</mark>:/mnt/test/var /lib/glance/images  
+
+    > mount -t nfs <mark>NFS ip</mark>:/mnt/test /var/lib/glance/images  
     > chown -R glance:glance /var/lib/glance/images
 ---
 ## ![OpenStack参数调优](image/jingsai/1685065903577.png)
@@ -210,7 +215,7 @@
     LimitNOFILE=10240
 
     重启rebbitmq服务  
-    > systemctl daemon-reload
+    > systemctl daemon-reload  
     > systemctl restart rabbitmq-server.service
 ---
 ## ![redis主从](image/jingsai/1685066464457.png)
@@ -239,7 +244,7 @@
     masterauth "123456"                             #在下方添加访问主库密码  
     第七处修改，打开AOF持久化支持  
     appendonly yes
-    ```1  
+    ```
     保存后重启radis服务  
     > systemctl restart redis  
 - （3）radis2主节点执行和第（2）步一样的操作  
@@ -262,7 +267,7 @@
 - （1）创建俩个100G的虚拟机
 
 - （2）改主机名，改host映射
-
+## ![安装docker](image.png)
 - （3）关防火墙
     ```
     vi /etc/selinux/config    #改成enabled  
@@ -332,6 +337,7 @@
     gpgcheck=0
     enabled=1
     ```
+## ![安装私有仓库](image-1.png)
 - （14）运行k8s_harbor_install.sh脚本（master节点做）
     > cd /opt/   
     > sh k8s_harbor_install.sh
@@ -358,7 +364,7 @@
     gpgcheck=0
     enabled=1
     ```
-
+## ![容器化部署Redis](image-2.png)
 - （20）编写一个redis的Dockerfile-redis文件
     > vi Dockerfile-redis
     ```
@@ -558,7 +564,7 @@
     ADD local.repo /etc/yum.repos.d/
 
     RUN yum install -y cmake pcre pcre-devel openssl openssl-devel zlib-devel gcc gcc-c++ net-tools
-    # 安装JDK
+    # 安装JDK(安装java)
     RUN yum install -y java-1.8.0-openjdk java-1.8.0-openjdk-devel
 
     RUN yum install nginx -y
@@ -653,8 +659,3 @@
     - 启动服务：
         > kubectl apply -f gpmall.yaml  
         > kubectl get pods,service
-
-
-
-
-

@@ -569,7 +569,7 @@ public=no
 7. 再次打开WPS文档，成功则不会显示字体缺失
 ---
 # xrdp测试
-1. 下载srdp(远程桌面协议)
+1. 下载xrdp(远程桌面协议)
     >sudo apt install xrdp
 2. 启动xrdp
     >sudo systemctl restart xrdp
